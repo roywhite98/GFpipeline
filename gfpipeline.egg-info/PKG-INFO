@@ -1,0 +1,14 @@
+Metadata-Version: 2.4
+Name: gfpipeline
+Version: 0.1.0
+Summary: Gene Family Analysis Pipeline CLI
+Requires-Python: >=3.10
+Requires-Dist: click>=8.0
+Requires-Dist: pyyaml>=6.0
+Requires-Dist: pydantic>=2.0
+Requires-Dist: biopython>=1.80
+Requires-Dist: requests>=2.28
+Requires-Dist: matplotlib>=3.6
+Requires-Dist: seaborn>=0.12
+Requires-Dist: matplotlib-venn>=0.11
+Requires-Dist: hypothesis>=6.0
