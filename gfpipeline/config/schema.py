@@ -44,7 +44,8 @@ class DomainConfig(BaseModel):
     evalue:         float            = 0.01
     maxhit:         int              = 250
     genome_cdd:     Optional[str]    = None
-    target_domains: list[str]        = []
+    cdd_db:         Optional[str]    = None
+    target_domains: Optional[str]    = None  # boolean query e.g. "(pfam00161 OR cl08249) AND pfam20241"
 
 
 class MotifConfig(BaseModel):

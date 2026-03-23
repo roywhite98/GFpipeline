@@ -10,6 +10,7 @@ from gfpipeline.config.schema import PipelineConfig
 from gfpipeline.core.exceptions import StageInputError
 from gfpipeline.core.file_manager import FileManager
 from gfpipeline.core.runner import ToolRunner
+from gfpipeline.genome_db.gene_index import strip_id_prefix
 
 log = logging.getLogger(__name__)
 
@@ -119,30 +120,84 @@ class CollinearityStage:
         self.runner.run(cmd, cwd=str(out_dir))
         log.info("JCVI complete → %s", out_dir)
 
+    def prepare_mcscanx_inputs(self) -> None:
+        """Prepare MCScanX input files: {prefix}.gff and {prefix}.blast."""
+        genome_name = self._genome_name
+        out_dir = self._collinearity_dir
+        out_dir.mkdir(parents=True, exist_ok=True)
+
+        def normalize_id(raw_id: str) -> str:
+            """Normalize gene IDs: strip known prefixes only.
+
+            MCScanX input IDs come directly from GFF3 gene rows and are
+            already clean gene IDs — only prefix stripping is needed.
+            """
+            return strip_id_prefix(raw_id)
+
+        # Prepare .blast file with normalized IDs
+        blast_dst = out_dir / f"{genome_name}.blast"
+        if not blast_dst.exists():
+            log.info("Preparing MCScanX blast file → %s", blast_dst)
+            with open(self._blast_out) as fin, open(blast_dst, "w") as fout:
+                for line in fin:
+                    parts = line.split("\t")
+                    if len(parts) >= 2:
+                        parts[0] = normalize_id(parts[0])
+                        parts[1] = normalize_id(parts[1])
+                        fout.write("\t".join(parts))
+                    else:
+                        fout.write(line)
+
+        # Prepare .gff file with normalized IDs (format: chrom gene_id start end)
+        gff_dst = out_dir / f"{genome_name}.gff"
+        if not gff_dst.exists():
+            log.info("Preparing MCScanX GFF file → %s", gff_dst)
+            gff3 = Path(self.config.databases.gff3)
+            lines = []
+            for line in gff3.read_text().splitlines():
+                line = line.strip()
+                if not line or line.startswith("#"):
+                    continue
+                parts = line.split("\t")
+                if len(parts) < 9 or parts[2] != "gene":
+                    continue
+                chrom = parts[0]
+                start = parts[3]
+                end = parts[4]
+                attrs = parts[8]
+                gene_id = None
+                for attr in attrs.split(";"):
+                    attr = attr.strip()
+                    if attr.startswith("ID="):
+                        gene_id = normalize_id(attr[3:])
+                        break
+                if gene_id:
+                    lines.append(f"{chrom}\t{gene_id}\t{start}\t{end}")
+            gff_dst.write_text("\n".join(lines) + "\n")
+            log.info("MCScanX GFF written → %s (%d genes)", gff_dst, len(lines))
+
     def run_mcscanx(self) -> None:
         """Call MCScanX, output to collinearity/ dir."""
         genome_name = self._genome_name
         out_dir = self._collinearity_dir
         out_dir.mkdir(parents=True, exist_ok=True)
 
-        input_prefix = str(out_dir / genome_name)
+        # MCScanX expects just the filename prefix (no directory), run from out_dir
         cmd = [
             self.config.tools.mcscanx,
-            input_prefix,
+            genome_name,
         ]
         log.info("Running MCScanX: %s", " ".join(cmd))
         self.runner.run(cmd, cwd=str(out_dir))
         log.info("MCScanX complete → %s", out_dir)
 
     def extract_target_blocks(self, gene_ids: list[str]) -> list[dict]:
-        """Extract collinearity blocks containing target genes.
+        """Extract collinearity blocks containing target genes."""
 
-        Reads any .collinearity or .synteny files in the collinearity dir.
-        Writes collinearity.blocks.tsv with columns:
-            block_id, gene1, gene2, chromosome1, chromosome2, score
-        Returns list of block dicts.
-        """
-        gene_id_set = set(gene_ids)
+        def normalize_id(raw_id: str) -> str:
+            return strip_id_prefix(raw_id)
+
+        gene_id_set = set(normalize_id(g) for g in gene_ids)
         blocks: list[dict] = []
 
         col_dir = self._collinearity_dir
@@ -207,6 +262,7 @@ class CollinearityStage:
             gene_id, chromosome, start, end, strand
         """
         gene_id_set = set(gene_ids)
+
         rows: list[dict] = []
 
         for line in gff3.read_text().splitlines():
@@ -225,16 +281,16 @@ class CollinearityStage:
             strand = parts[6]
             attrs = parts[8]
 
-            # Parse gene ID from attributes (ID=xxx or Name=xxx)
-            gene_id: str | None = None
+            raw_gene_id: str | None = None
             for attr in attrs.split(";"):
                 attr = attr.strip()
                 if attr.startswith("ID="):
-                    gene_id = attr[3:]
+                    raw_gene_id = attr[3:]
                     break
-            if gene_id is None:
+            if raw_gene_id is None:
                 continue
 
+            gene_id = strip_id_prefix(raw_gene_id)
             if gene_id in gene_id_set:
                 rows.append({
                     "gene_id": gene_id,
@@ -272,13 +328,17 @@ class CollinearityStage:
         self._collinearity_dir.mkdir(parents=True, exist_ok=True)
 
         # Step 1: all-vs-all BLAST
-        self.run_all_vs_all_blast()
+        if not force and self._blast_out.exists():
+            log.info("Skipping all-vs-all blastp (already exists: %s)", self._blast_out)
+        else:
+            self.run_all_vs_all_blast()
 
         # Step 2: synteny tool
         tool = self.config.collinearity.tool
         if tool == "jcvi":
             self.run_jcvi()
         else:
+            self.prepare_mcscanx_inputs()
             self.run_mcscanx()
 
         # Step 3: read gene ids

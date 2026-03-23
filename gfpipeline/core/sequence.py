@@ -30,10 +30,19 @@ def transcript_to_gene_id(transcript_id: str) -> str:
     Rice transcript IDs follow the pattern OsXXtYYYYYYY-NN.
     Conversion: replace 't' with 'g' and remove the '-NN' suffix.
 
+    Note: This function is species-specific (rice only). For multi-species
+    pipelines, use the gene2transcript.tsv reverse mapping built by gene_index.
+
     Examples:
         Os01t0936800-01 -> Os01g0936800
         Os12t0123456-02 -> Os12g0123456
+        transcript:Os01t0936800-01 -> Os01g0936800
     """
+    # Strip known GFF3 prefixes before applying species-specific regex
+    for prefix in ("transcript:", "gene:"):
+        if transcript_id.startswith(prefix):
+            transcript_id = transcript_id[len(prefix):]
+            break
     # Remove the isoform suffix (-NN)
     gene_id = re.sub(r"-\d+$", "", transcript_id)
     # Replace the first lowercase 't' that separates chromosome from locus

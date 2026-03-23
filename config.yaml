@@ -1,0 +1,85 @@
+# GFpipeline configuration file
+
+project_name: RIP_superfamily
+data_dir: data/
+result_dir: results/
+
+# ── Required: input files ──────────────────────────────────────────────────────
+databases:
+  ref_fa: data/WRF.ref.fa       # reference protein sequences (FASTA)
+  genome: data/Oryza_sativa.IRGSP-1.0.dna_sm.toplevel.fa          # whole genome sequence (FASTA)
+  gff3:   data/Oryza_sativa.IRGSP-1.0.58.chr.gff3      # genome annotation (GFF3)
+
+# ── Tools (defaults assume tools are in PATH) ──────────────────────────────────
+tools:
+  muscle:      /home/rao/bin/musclev5.3
+  hmmbuild:    hmmbuild
+  hmmsearch:   hmmsearch
+  hmmemit:     hmmemit
+  blastp:      blastp
+  trimal:      /home/rao/bin/trimAl/trimal
+  iqtree:      /home/rao/bin/iqtree-2.3.6/bin/iqtree2
+  meme:        /home/rao/bin/meme
+  fimo:        /home/rao/bin/fimo
+  mcscanx:     /home/rao/bin/MCScanX-1.0.0/MCScanX
+  makeblastdb: makeblastdb
+  rpsblast:    rpsblast+
+  samtools:    samtools
+  minimap2:    minimap2
+  stringtie:   stringtie
+
+# ── Gene identification ────────────────────────────────────────────────────────
+identify:
+  hmm_evalue:    100
+  blast_evalue:  1.0e-5
+  blast_threads: 10
+
+# ── Phylogenetic tree ──────────────────────────────────────────────────────────
+tree:
+  iqtree_bootstrap: 1000
+
+# ── Domain annotation ─────────────────────────────────────────────────────────
+domain:
+  evalue:         0.01
+  maxhit:         250
+  genome_cdd:     results/RIP_superfamily.domain.genome.cdd.txt   # path to genome-wide CDD result (optional)
+  cdd_db:         /home/rao/data/cdd_db/Cdd   # path to local CDD database for rpsblast
+  target_domains: "pfam00161 OR cl08249"  # pfam00161=RIP, cl08249=RIP superfamily
+
+# ── Motif discovery ───────────────────────────────────────────────────────────
+motif:
+  num_motifs:      10
+  min_width:       6
+  max_width:       50
+  filter_mode:     any          # any | all | min_count
+  min_motif_count: 1
+
+# ── Collinearity ──────────────────────────────────────────────────────────────
+collinearity:
+  tool:          mcscanx        # jcvi | mcscanx
+  blast_threads: 10
+
+# ── GFF QC ────────────────────────────────────────────────────────────────────
+gff_qc:
+  output_dir:    data/gff_qc/
+  min_cds_len:   150
+  edge_distance: 500
+  rna_bam:       []             # e.g. [data/rna1.bam, data/rna2.bam]
+  transcript_fa: null
+  extra_gff:     []
+
+# ── Genome database ───────────────────────────────────────────────────────────
+genome_db:
+  build_prot:    true
+  build_nucl:    true
+  index_dir:     data/genome_index/
+  rep_index_dir: data/rep_index/
+  genome_name:   null           # defaults to project_name
+  rep_selection: longest_cds    # longest_cds | longest_mrna
+
+# ── Transcriptome / expression ────────────────────────────────────────────────
+trans:
+  expression_matrix: null       # path to expression matrix (optional)
+  logfc_threshold:   null
+  pvalue_threshold:  null
+  venn_groups:       []

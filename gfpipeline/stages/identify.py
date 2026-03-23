@@ -13,7 +13,6 @@ from gfpipeline.core.sequence import (
     extract_fasta,
     parse_blast_idlist,
     parse_hmm_idlist,
-    transcript_to_gene_id,
 )
 
 log = logging.getLogger(__name__)
@@ -266,8 +265,20 @@ class IdentifyStage:
             )
             log.info("Merged candidates: %d IDs → %s", len(merged_ids), self._candidates_idlist)
 
-        # Convert transcript IDs to gene IDs
-        gene_ids = sorted(set(transcript_to_gene_id(t) for t in merged_ids))
+        # Convert transcript IDs to gene IDs via gene2transcript.tsv reverse mapping
+        gene2transcript_tsv = Path(self.config.genome_db.index_dir) / "gene2transcript.tsv"
+        transcript_to_gene: dict[str, str] = {}
+        if gene2transcript_tsv.exists():
+            for line in gene2transcript_tsv.read_text().splitlines():
+                if line.startswith("gene_id") or not line.strip():
+                    continue
+                parts_line = line.split("\t")
+                if len(parts_line) >= 2:
+                    transcript_to_gene[parts_line[1]] = parts_line[0]
+
+        gene_ids = sorted(set(
+            transcript_to_gene.get(t, t) for t in merged_ids
+        ))
         if not self.fm.skip_if_exists(self._candidates_gene_idlist, force):
             self._candidates_gene_idlist.write_text(
                 "\n".join(gene_ids) + ("\n" if gene_ids else "")

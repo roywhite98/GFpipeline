@@ -14,6 +14,7 @@ from gfpipeline.config.schema import PipelineConfig
 from gfpipeline.core.exceptions import PipelineError, StageInputError
 from gfpipeline.core.file_manager import FileManager
 from gfpipeline.core.logger import get_logger
+from gfpipeline.genome_db.gene_index import strip_id_prefix
 
 log = get_logger(__name__)
 
@@ -199,15 +200,15 @@ class RepIndexBuilder:
                     attrs = _parse_attributes(attr_s)
 
                     if feat_type in ("mRNA", "transcript"):
-                        t_id = attrs.get("ID", "")
-                        parent = attrs.get("Parent", "")
+                        t_id = strip_id_prefix(attrs.get("ID", ""))
+                        parent = strip_id_prefix(attrs.get("Parent", ""))
                         if t_id and parent:
                             gene2transcripts[parent].append(t_id)
                             transcript_to_gene[t_id] = parent
                             mrna_lengths[t_id] = end - start + 1
 
                     elif feat_type == "CDS":
-                        parent = attrs.get("Parent", "")
+                        parent = strip_id_prefix(attrs.get("Parent", ""))
                         if parent:
                             cds_lengths[parent] += end - start + 1
 

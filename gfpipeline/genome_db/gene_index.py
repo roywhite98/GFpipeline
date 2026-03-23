@@ -30,6 +30,25 @@ def _parse_attributes(attr_str: str) -> dict[str, str]:
     return attrs
 
 
+_KNOWN_PREFIXES = ("transcript:", "gene:")
+
+
+def strip_id_prefix(raw_id: str) -> str:
+    """Strip known GFF3 ID prefixes (transcript:, gene:) from a raw ID.
+
+    Returns the input unchanged if no known prefix is present.
+
+    Examples:
+        strip_id_prefix("transcript:Os01t0160800") -> "Os01t0160800"
+        strip_id_prefix("gene:Os01g0160800")       -> "Os01g0160800"
+        strip_id_prefix("Os01g0160800")            -> "Os01g0160800"
+    """
+    for prefix in _KNOWN_PREFIXES:
+        if raw_id.startswith(prefix):
+            return raw_id[len(prefix):]
+    return raw_id
+
+
 class GeneIndexBuilder:
     """Build gene/transcript sequence indices from GFF3 and FASTA files.
 
@@ -92,8 +111,8 @@ class GeneIndexBuilder:
                 if feat_type not in ("mRNA", "transcript"):
                     continue
                 attrs = _parse_attributes(parts[8])
-                t_id = attrs.get("ID", "")
-                parent = attrs.get("Parent", "")
+                t_id = strip_id_prefix(attrs.get("ID", ""))
+                parent = strip_id_prefix(attrs.get("Parent", ""))
                 if t_id and parent:
                     gene2transcripts[parent].append(t_id)
 
@@ -139,8 +158,8 @@ class GeneIndexBuilder:
                 attrs = _parse_attributes(attr_s)
 
                 if feat_type in ("mRNA", "transcript"):
-                    t_id = attrs.get("ID", "")
-                    parent = attrs.get("Parent", "")
+                    t_id = strip_id_prefix(attrs.get("ID", ""))
+                    parent = strip_id_prefix(attrs.get("Parent", ""))
                     if t_id:
                         transcripts[t_id] = {
                             "chrom": chrom,
@@ -152,12 +171,12 @@ class GeneIndexBuilder:
                             transcript_to_gene[t_id] = parent
 
                 elif feat_type == "exon":
-                    parent = attrs.get("Parent", "")
+                    parent = strip_id_prefix(attrs.get("Parent", ""))
                     if parent:
                         exon_counts[parent] += 1
 
                 elif feat_type == "CDS":
-                    parent = attrs.get("Parent", "")
+                    parent = strip_id_prefix(attrs.get("Parent", ""))
                     if parent:
                         cds_lengths[parent] += end - start + 1
 

@@ -39,3 +39,13 @@ Thumbs.db
 
 # Kiro
 .kiro/
+
+# Hypothesis
+.hypothesis/
+
+# Pipeline data and results
+data/
+results/
+tests/
+
+

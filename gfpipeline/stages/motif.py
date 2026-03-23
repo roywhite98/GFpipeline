@@ -9,6 +9,7 @@ from gfpipeline.config.schema import PipelineConfig
 from gfpipeline.core.exceptions import StageInputError
 from gfpipeline.core.file_manager import FileManager
 from gfpipeline.core.runner import ToolRunner
+from gfpipeline.genome_db.gene_index import strip_id_prefix
 
 log = logging.getLogger(__name__)
 
@@ -112,7 +113,7 @@ class MotifStage:
                 continue
             motif_id = parts[0]
             sequence_name = parts[2]
-            gene_id = sequence_name  # protein FASTA: sequence_name == gene_id
+            gene_id = strip_id_prefix(sequence_name)  # strip transcript:/gene: prefix if present
             if gene_id not in gene_motifs:
                 gene_motifs[gene_id] = []
             if motif_id not in gene_motifs[gene_id]:
