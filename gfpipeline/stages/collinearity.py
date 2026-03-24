@@ -40,11 +40,11 @@ class CollinearityStage:
 
     @property
     def _blast_out(self) -> Path:
-        return self.fm.result("collinearity", "blast", "out")
+        return self._collinearity_dir / f"{self._genome_name}.genome.blast.out"
 
     @property
     def _collinearity_dir(self) -> Path:
-        return self.fm.result_dir / f"{self.fm.proj}.collinearity"
+        return self.fm.data_dir / "collinearity_mcscanx"
 
     @property
     def _blocks_tsv(self) -> Path:

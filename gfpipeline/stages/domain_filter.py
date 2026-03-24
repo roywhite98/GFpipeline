@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Callable
 
 import requests
+import click
 from Bio import SeqIO
 
 from gfpipeline.config.schema import PipelineConfig
@@ -170,8 +171,14 @@ class DomainFilterStage:
         return self.fm.result("domain", "cdd", "txt")
 
     @property
+    def _cdd_dir(self) -> Path:
+        """data/cdd/ directory for genome-level CDD files."""
+        return self.fm.data_dir / "cdd"
+
+    @property
     def _genome_cdd(self) -> Path:
-        return self.fm.result("domain", "genome.cdd", "txt")
+        genome_name = self.config.genome_db.genome_name or self.config.project_name
+        return self._cdd_dir / f"{genome_name}.genome.cdd.txt"
 
     @property
     def _candidates_idlist(self) -> Path:
@@ -435,6 +442,7 @@ class DomainFilterStage:
             return
 
         self.fm.ensure_dirs()
+        self._cdd_dir.mkdir(parents=True, exist_ok=True)
 
         # Step 1: build evaluator
         if self._domain.target_domains:
@@ -456,9 +464,11 @@ class DomainFilterStage:
             log.info("Using configured genome CDD: %s", genome_cdd_path)
         elif self._domain.cdd_db:
             log.info("Running local rpsblast with CDD db: %s", self._domain.cdd_db)
+            click.echo("正在运行全基因组 rpsblast，序列较多时耗时较长，请耐心等待...")
             genome_cdd_path = self.run_local_rpsblast(self.fm.rep_pep)
         else:
             log.info("Submitting genome proteins to NCBI CD-Search...")
+            click.echo("正在向 NCBI CD-Search 提交全基因组蛋白，耗时较长（通常数分钟至数十分钟），请耐心等待...")
             genome_cdd_path = self.submit_genome_batch(self.fm.rep_pep)
 
         # Step 3: filter

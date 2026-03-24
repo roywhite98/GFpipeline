@@ -49,11 +49,12 @@ class DomainConfig(BaseModel):
 
 
 class MotifConfig(BaseModel):
-    num_motifs:      int = 10
-    min_width:       int = 6
-    max_width:       int = 50
-    filter_mode:     str = "any"   # any | all | min_count
-    min_motif_count: int = 1
+    num_motifs:      int   = 10
+    min_width:       int   = 6
+    max_width:       int   = 50
+    fimo_pvalue:     float = 1e-4   # FIMO p-value threshold (default 1e-4, use 1e-5~1e-6 for stricter)
+    filter_mode:     str   = "any"  # any | all | min_count
+    min_motif_count: int   = 1
 
 
 class CollinearityConfig(BaseModel):

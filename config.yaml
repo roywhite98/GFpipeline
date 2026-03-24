@@ -42,7 +42,7 @@ tree:
 domain:
   evalue:         0.01
   maxhit:         250
-  genome_cdd:     results/RIP_superfamily.domain.genome.cdd.txt   # path to genome-wide CDD result (optional)
+  genome_cdd:     data/cdd/Oryza_sativa.IRGSP-1.0.genome.cdd.txt   # path to genome-wide CDD result (optional)
   cdd_db:         /home/rao/data/cdd_db/Cdd   # path to local CDD database for rpsblast
   target_domains: "pfam00161 OR cl08249"  # pfam00161=RIP, cl08249=RIP superfamily
 
@@ -51,8 +51,9 @@ motif:
   num_motifs:      10
   min_width:       6
   max_width:       50
-  filter_mode:     any          # any | all | min_count
-  min_motif_count: 1
+  fimo_pvalue:     1e-5              # FIMO p-value 阈值，越小越严格
+  filter_mode:     min_count          # any | all | min_count
+  min_motif_count: 3
 
 # ── Collinearity ──────────────────────────────────────────────────────────────
 collinearity:
@@ -74,7 +75,7 @@ genome_db:
   build_nucl:    true
   index_dir:     data/genome_index/
   rep_index_dir: data/rep_index/
-  genome_name:   null           # defaults to project_name
+  genome_name:   Oryza_sativa.IRGSP-1.0   # defaults to project_name
   rep_selection: longest_cds    # longest_cds | longest_mrna
 
 # ── Transcriptome / expression ────────────────────────────────────────────────

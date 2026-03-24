@@ -80,6 +80,16 @@ def motif_cmd(ctx: click.Context) -> None:
     MotifStage(config, runner, fm).run(force=force)
 
 
+@cli.command("motif-filter")
+@click.pass_context
+def motif_filter_cmd(ctx: click.Context) -> None:
+    """Re-run motif filtering only (skip MEME/FIMO, use existing fimo.tsv)."""
+    config = load_config_from_ctx(ctx)
+    fm = FileManager(config)
+    runner = ToolRunner(dry_run=ctx.obj["dry_run"], verbose=ctx.obj["verbose"])
+    MotifStage(config, runner, fm).run_filter_only()
+
+
 @cli.command("collinearity")
 @click.pass_context
 def collinearity_cmd(ctx: click.Context) -> None:

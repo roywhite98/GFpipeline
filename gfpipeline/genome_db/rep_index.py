@@ -282,10 +282,9 @@ class RepIndexBuilder:
                 except ValueError:
                     continue
                 attrs = _parse_attributes(attr_s)
-                parent = attrs.get("Parent", "")
+                parent = strip_id_prefix(attrs.get("Parent", ""))
                 if parent in target_ids:
                     cds_map[parent].append((chrom, start, end, strand))
-
         # Load genome into memory (indexed by chrom id)
         genome_index = SeqIO.to_dict(SeqIO.parse(str(genome_path), "fasta"))
 
@@ -310,7 +309,7 @@ class RepIndexBuilder:
                 ))
                 if strand == "-":
                     cds_seq = cds_seq.reverse_complement()
-                fh.write(f">{t_id}\n{str(cds_seq)}\n")
+                fh.write(f">{strip_id_prefix(t_id)}\n{str(cds_seq)}\n")
                 written += 1
 
         log.info("Extracted %d CDS sequences from genome to %s", written, output_path)
@@ -336,7 +335,8 @@ class RepIndexBuilder:
                     log.warning("Translation failed for %s: %s", record.id, exc)
                     pep = ""
                 if pep:
-                    fh.write(f">{record.id}\n{pep}\n")
+                    clean_id = strip_id_prefix(record.id)
+                    fh.write(f">{clean_id}\n{pep}\n")
                     written += 1
 
         log.info("Translated %d sequences to %s", written, pep_path)

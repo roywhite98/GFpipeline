@@ -85,6 +85,7 @@ class MotifStage:
         out_dir = self._fimo_dir
         cmd = [
             self.config.tools.fimo,
+            "--thresh", str(self._motif.fimo_pvalue),
             "--oc", str(out_dir),
             str(meme_xml),
             str(pep_db),
@@ -178,6 +179,49 @@ class MotifStage:
                 "matched_sequence": parts[9],
             })
         return rows
+
+    def run_filter_only(self) -> None:
+        """Re-run parse + filter using existing fimo.tsv, skip MEME/FIMO."""
+        fimo_dir = self._fimo_dir
+        fimo_tsv = fimo_dir / "fimo.tsv"
+        if not fimo_tsv.exists():
+            raise StageInputError(
+                f"FIMO output '{fimo_tsv}' does not exist. "
+                "Please run the motif stage first."
+            )
+        self.fm.ensure_dirs()
+
+        gene_motifs = self.parse_fimo(fimo_dir)
+        log.info("FIMO hits: %d genes", len(gene_motifs))
+
+        all_motif_ids: list[str] = []
+        seen: set[str] = set()
+        for motifs in gene_motifs.values():
+            for m in motifs:
+                if m not in seen:
+                    all_motif_ids.append(m)
+                    seen.add(m)
+
+        filtered_ids = self.filter_genes(gene_motifs, all_motif_ids)
+        log.info("Filtered %d genes by motif (%s mode)", len(filtered_ids), self._motif.filter_mode)
+
+        self._candidates_idlist.write_text("\n".join(filtered_ids) + "\n")
+        log.info("Candidates written → %s", self._candidates_idlist)
+
+        filtered_set = set(filtered_ids)
+        fimo_rows = self._parse_fimo_rows(fimo_dir)
+        summary_lines = ["gene_id\tmotif_id\tmotif_name\tsequence_name\tstart\tstop\tscore\tp_value"]
+        for row in fimo_rows:
+            gene_id = row["sequence_name"]
+            if gene_id in filtered_set:
+                summary_lines.append(
+                    f"{gene_id}\t{row['motif_id']}\t{row['motif_alt_id']}"
+                    f"\t{row['sequence_name']}\t{row['start']}\t{row['stop']}"
+                    f"\t{row['score']}\t{row['p_value']}"
+                )
+        self._summary_tsv.write_text("\n".join(summary_lines) + "\n")
+        log.info("Summary written → %s", self._summary_tsv)
+        log.info("Motif filter-only complete.")
 
     # ------------------------------------------------------------------
     # Run

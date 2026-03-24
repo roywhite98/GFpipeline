@@ -18,6 +18,7 @@
   - [domain — 保守结构域分析](#domain--保守结构域分析)
   - [domain-filter — 结构域筛选](#domain-filter--结构域筛选)
   - [motif — Motif 发现与筛选](#motif--motif-发现与筛选)
+  - [motif-filter — 仅重跑 Motif 筛选](#motif-filter--仅重跑-motif-筛选)
   - [collinearity — 共线性分析](#collinearity--共线性分析)
   - [properties — 理化性质分析](#properties--理化性质分析)
   - [trans — 转录组分析](#trans--转录组分析)
@@ -39,7 +40,7 @@
 ```bash
 # 克隆仓库
 git clone <repo_url>
-cd GeneFamily-kiro
+cd GFpipeline
 
 # 安装（推荐使用虚拟环境）
 pip install -e .
@@ -76,25 +77,19 @@ gfpipeline --help
 
 在项目根目录创建 `config.yaml`（详见[配置文件详解](#配置文件详解)）。
 
-### 第三步：构建基因组数据库（首次运行必须）
+### 第三步：执行全流程分析
 
 ```bash
-gfpipeline genome-db --config config.yaml
-```
-
-这一步会依次完成：BLAST 数据库构建 → GFF3 质检 → 基因序列索引 → 代表转录本索引。
-
-### 第四步：执行全流程分析
-
-```bash
-gfpipeline run --config config.yaml
+gfpipeline --config config.yaml run
 ```
 
 全流程按顺序执行：identify → tree → domain → domain-filter → motif → collinearity。
 
-### 第五步：查看结果
+> 若 BLAST 数据库不存在，会在 identify 之前自动先执行 `genome-db` 建库，无需手动操作。
 
-所有结果输出到 `results/{GeneFamily}_results/` 目录，汇总报告见 `results/{GeneFamily}_results/{GeneFamily}.summary.txt`。
+### 第四步：查看结果
+
+所有结果输出到配置文件中 `result_dir` 指定的目录（默认 `results/`），汇总报告见 `results/{GeneFamily}.summary.txt`。
 
 ---
 
@@ -223,7 +218,7 @@ trans:
 按顺序执行 identify → tree → domain → domain-filter → motif → collinearity 六个阶段。
 
 ```bash
-gfpipeline run --config config.yaml
+gfpipeline --config config.yaml run
 ```
 
 若 BLAST 数据库不存在，会在 identify 之前自动先执行 `genome-db blast`。
@@ -238,23 +233,23 @@ gfpipeline run --config config.yaml
 
 ```bash
 # 执行全部四个子步骤
-gfpipeline genome-db --config config.yaml
+gfpipeline --config config.yaml genome-db
 
 # 仅构建 BLAST 数据库
-gfpipeline genome-db blast --config config.yaml
+gfpipeline --config config.yaml genome-db blast
 
 # 仅执行 GFF3 质检
-gfpipeline genome-db gff-qc --config config.yaml
+gfpipeline --config config.yaml genome-db gff-qc
 
 # 仅构建基因序列索引
-gfpipeline genome-db gene-index --config config.yaml
+gfpipeline --config config.yaml genome-db gene-index
 
 # 仅构建代表转录本索引
-gfpipeline genome-db rep-index --config config.yaml
+gfpipeline --config config.yaml genome-db rep-index
 
 # 按 ID 查询序列
-gfpipeline genome-db query --id Os01g0936800 --type pep --config config.yaml
-gfpipeline genome-db query --id Os01t0936800-01 --type cds --output out.fa --config config.yaml
+gfpipeline --config config.yaml genome-db query --id Os01g0936800 --type pep
+gfpipeline --config config.yaml genome-db query --id Os01t0936800-01 --type cds --output out.fa
 ```
 
 **genome-db blast** 子步骤说明：
@@ -294,7 +289,7 @@ gfpipeline genome-db query --id Os01t0936800-01 --type cds --output out.fa --con
 通过 HMM 搜索和 BLAST 搜索联合鉴定候选基因家族成员。
 
 ```bash
-gfpipeline identify --config config.yaml
+gfpipeline --config config.yaml identify
 ```
 
 **前置条件：**
@@ -317,7 +312,7 @@ gfpipeline identify --config config.yaml
 基于候选成员蛋白序列构建 ML 系统发育树。
 
 ```bash
-gfpipeline tree --config config.yaml
+gfpipeline --config config.yaml tree
 ```
 
 **前置条件：** identify 阶段已完成（`{Proj}.identify.candidates.pep.fa` 存在）
@@ -334,7 +329,7 @@ gfpipeline tree --config config.yaml
 向 NCBI Batch CD-Search 提交候选蛋白序列，获取保守结构域注释。
 
 ```bash
-gfpipeline domain --config config.yaml
+gfpipeline --config config.yaml domain
 ```
 
 **前置条件：** identify 阶段已完成
@@ -348,7 +343,7 @@ gfpipeline domain --config config.yaml
 从全基因组蛋白中筛选含有目标结构域的基因，补充和验证候选成员集合。
 
 ```bash
-gfpipeline domain-filter --config config.yaml
+gfpipeline --config config.yaml domain-filter
 ```
 
 **前置条件：** domain 阶段已完成（`{Proj}.domain.cdd.txt` 存在）
@@ -365,10 +360,16 @@ gfpipeline domain-filter --config config.yaml
 用 MEME 发现候选成员的保守 motif，再用 FIMO 在全基因组中扫描，筛选含相同 motif 的基因。
 
 ```bash
-gfpipeline motif --config config.yaml
+gfpipeline --config config.yaml motif
 ```
 
 **前置条件：** identify 阶段已完成
+
+若只想修改筛选参数（`filter_mode` / `min_motif_count`）而不重跑 MEME/FIMO，使用：
+
+```bash
+gfpipeline --config config.yaml motif-filter
+```
 
 **筛选模式（`motif.filter_mode`）：**
 
@@ -385,7 +386,7 @@ gfpipeline motif --config config.yaml
 分析基因家族成员在基因组中的共线性分布和复制模式。
 
 ```bash
-gfpipeline collinearity --config config.yaml
+gfpipeline --config config.yaml collinearity
 ```
 
 **前置条件：** identify 阶段已完成，且 `databases.gff3` 和 `databases.pep` 存在
@@ -404,7 +405,7 @@ gfpipeline collinearity --config config.yaml
 计算候选成员蛋白的理化性质，并提示在线分析工具。
 
 ```bash
-gfpipeline properties --config config.yaml
+gfpipeline --config config.yaml properties
 ```
 
 **前置条件：** identify 阶段已完成
@@ -431,7 +432,7 @@ gfpipeline properties --config config.yaml
 基于用户提供的表达量矩阵，生成热图和差异基因列表。
 
 ```bash
-gfpipeline trans --config config.yaml
+gfpipeline --config config.yaml trans
 ```
 
 **前置条件：** identify 阶段已完成，且 `trans.expression_matrix` 文件存在
@@ -447,7 +448,7 @@ gfpipeline trans --config config.yaml
 
 ## 输出文件说明
 
-所有结果输出到 `results/{Proj_Name}_results/` 目录，数据文件输出到 `data/{Proj_Name}_data/` 目录。
+所有结果输出到配置文件中 `result_dir` 指定的目录（默认 `results/`），数据文件输出到 `data_dir` 指定的目录（默认 `data/`）。
 
 ### identify 阶段
 
@@ -483,7 +484,8 @@ gfpipeline trans --config config.yaml
 
 | 文件 | 说明 |
 |------|------|
-| `{Proj}.domain.genome.cdd.txt` | 全基因组 CD-Search 结果（若未提供现有结果） |
+| `data/cdd/{Genome_Name}.genome.cdd.txt` | 全基因组 CD-Search 结果（若未提供现有结果） |
+| `data/cdd/{Genome_Name}.genome.cdd.rpsblast.tsv` | rpsblast 原始输出（本地模式） |
 | `{Proj}.domain-filter.candidates.idlist` | 结构域筛选后的候选基因 ID 列表 |
 | `{Proj}.domain-filter.summary.tsv` | 结构域筛选汇总表（含结构域信息） |
 
@@ -500,8 +502,11 @@ gfpipeline trans --config config.yaml
 
 | 文件 | 说明 |
 |------|------|
-| `{Proj}.collinearity.blast.out` | 全基因组蛋白全对全 BLAST 结果 |
-| `{Proj}.collinearity/` | 共线性分析工具输出目录 |
+| `data/collinearity_mcscanx/{Genome_Name}.genome.blast.out` | 全基因组蛋白全对全 BLAST 结果 |
+| `data/collinearity_mcscanx/{Genome_Name}.gff` | MCScanX 输入 GFF（全基因组所有基因坐标） |
+| `data/collinearity_mcscanx/{Genome_Name}.collinearity` | MCScanX 全基因组共线性结果 |
+| `data/collinearity_mcscanx/{Genome_Name}.tandem` | MCScanX 全基因组串联重复结果 |
+| `data/collinearity_mcscanx/{Genome_Name}.html/` | MCScanX 可视化输出 |
 | `{Proj}.collinearity.blocks.tsv` | 包含目标基因的共线性块 |
 | `{Proj}.collinearity.gene-location.tsv` | 基因家族成员染色体位置信息 |
 
@@ -538,8 +543,8 @@ gfpipeline trans --config config.yaml
 
 | 文件 | 说明 |
 |------|------|
-| `results/{Proj}_results/pipeline.log` | 每次运行的完整日志（时间戳、阶段状态、耗时） |
-| `results/{Proj}_results/{Proj}.summary.txt` | 全流程汇总报告（各阶段产出文件路径和统计数字） |
+| `results/pipeline.log` | 每次运行的完整日志（时间戳、阶段状态、耗时） |
+| `results/{Proj}.summary.txt` | 全流程汇总报告（各阶段产出文件路径和统计数字） |
 
 ---
 
@@ -599,18 +604,30 @@ pip install jcvi
 
 ## 常见问题
 
+**Q：运行时提示"No such option: --config"**
+
+`--config` 是全局选项，必须放在子命令之前：
+```bash
+# 正确
+gfpipeline --config config.yaml run
+gfpipeline --config config.yaml run --dry-run
+
+# 错误
+gfpipeline run --config config.yaml
+```
+
 **Q：运行时提示"找不到配置文件"**
 
 确认当前目录下存在 `config.yaml`，或使用 `--config` 参数指定路径：
 ```bash
-gfpipeline run --config /path/to/my_config.yaml
+gfpipeline --config /path/to/my_config.yaml run
 ```
 
 **Q：如何跳过已完成的步骤重新运行某个阶段？**
 
 默认情况下，若中间文件已存在则跳过。若需强制重新生成，使用 `--force`：
 ```bash
-gfpipeline identify --config config.yaml --force
+gfpipeline --config config.yaml --force identify
 ```
 
 **Q：domain 阶段运行很慢**
@@ -629,7 +646,7 @@ domain:
 
 使用 `--verbose` 标志，或查看 `results/{Proj}_results/pipeline.log` 文件：
 ```bash
-gfpipeline run --config config.yaml --verbose
+gfpipeline --config config.yaml --verbose run
 ```
 
 **Q：trans 阶段的表达量矩阵格式是什么？**
@@ -646,7 +663,7 @@ Os01g0002  0.0        2.1        0.5
 
 直接调用对应的子命令即可，例如只运行 motif 分析：
 ```bash
-gfpipeline motif --config config.yaml
+gfpipeline --config config.yaml motif
 ```
 
 注意：各阶段有前置依赖，请确保前置阶段已完成（详见各阶段的"前置条件"说明）。
@@ -655,5 +672,5 @@ gfpipeline motif --config config.yaml
 
 `--dry-run` 会打印所有将要执行的命令，但不实际运行，适合在正式运行前检查命令是否正确：
 ```bash
-gfpipeline run --config config.yaml --dry-run
+gfpipeline --config config.yaml --dry-run run
 ```
