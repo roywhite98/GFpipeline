@@ -19,6 +19,7 @@
   - [domain-filter — 结构域筛选](#domain-filter--结构域筛选)
   - [motif — Motif 发现与筛选](#motif--motif-发现与筛选)
   - [motif-filter — 仅重跑 Motif 筛选](#motif-filter--仅重跑-motif-筛选)
+  - [refine — 交互式二次筛选与分析](#refine--交互式二次筛选与分析)
   - [collinearity — 共线性分析](#collinearity--共线性分析)
   - [properties — 理化性质分析](#properties--理化性质分析)
   - [trans — 转录组分析](#trans--转录组分析)
@@ -87,7 +88,30 @@ gfpipeline --config config.yaml run
 
 > 若 BLAST 数据库不存在，会在 identify 之前自动先执行 `genome-db` 建库，无需手动操作。
 
-### 第四步：查看结果
+### 第四步（可选）：交互式二次筛选
+
+初步分析完成后，根据进化树拓扑、结构域分布、motif 组合等结果，手动判断哪些基因是真正的家族成员，将精炼后的基因 ID 写入一个 idlist 文件：
+
+```
+# data/my_refined_genes.idlist
+Os01g0001
+Os02g0002
+Os03t0003-01   # 也可以直接写转录本 ID
+```
+
+在配置文件中指定该文件路径，然后执行二次分析：
+
+```bash
+# config.yaml 中添加：
+# refinement:
+#   idlist: data/my_refined_genes.idlist
+
+gfpipeline --config config.yaml refine
+```
+
+二次分析会对精炼后的序列重新执行 tree、domain、motif 三项分析，输出文件以 `{Proj}.refine.*` 命名。
+
+### 第五步：查看结果
 
 所有结果输出到配置文件中 `result_dir` 指定的目录（默认 `results/`），汇总报告见 `results/{GeneFamily}.summary.txt`。
 
@@ -155,15 +179,15 @@ tree:
 domain:
   evalue:  0.01    # CD-Search e-value 阈值
   maxhit:  250     # 每条序列最大命中数
-  # genome_cdd: path/to/genome.cdd.txt  # 可选：已有的全基因组 CDD 结果，跳过重新提交
-  # target_domains:                      # 可选：手动指定目标结构域 accession 列表
-  #   - cd12345
-  #   - cl67890
+  # cdd_db: /path/to/cdd_db/Cdd              # 可选：本地 CDD 数据库路径（用于 rpsblast 本地模式）
+  # genome_cdd: path/to/genome.cdd.txt       # 可选：已有的全基因组 CDD 结果，跳过重新提交
+  # target_domains: "pfam00161 OR cl08249"   # 可选：目标结构域 accession（支持 AND/OR 逻辑）
 
 motif:
   num_motifs:      10     # MEME 发现的 motif 数量
   min_width:       6      # motif 最小宽度（氨基酸数）
   max_width:       50     # motif 最大宽度（氨基酸数）
+  fimo_pvalue:     1e-5   # FIMO p-value 阈值（越小越严格）
   filter_mode:     any    # 筛选模式：any（任意一个）| all（全部）| min_count（最少数量）
   min_motif_count: 1      # filter_mode=min_count 时的最少命中数
 
@@ -193,6 +217,12 @@ trans:
   logfc_threshold:   ~          # 差异表达筛选 log2FC 阈值
   pvalue_threshold:  ~          # 差异表达筛选 p-value 阈值
   venn_groups: []               # Venn 图样本组列表
+
+# ============================================================
+# 交互式二次筛选（可选，初步分析完成后使用）
+# ============================================================
+# refinement:
+#   idlist: data/my_refined_genes.idlist  # 用户手动筛选后的基因 ID 列表文件路径
 ```
 
 
@@ -381,6 +411,42 @@ gfpipeline --config config.yaml motif-filter
 
 ---
 
+### refine — 交互式二次筛选与分析
+
+在初步分析（tree/domain/motif）完成后，根据结果手动筛选基因，对精炼后的序列集合重新执行 tree、domain、motif 三项分析。
+
+**使用流程：**
+
+1. 将筛选后的基因 ID 写入一个文本文件（每行一个 ID，支持基因 ID 或转录本 ID，`#` 开头为注释行）
+2. 在配置文件中添加 `refinement.idlist` 字段指向该文件
+3. 执行 `gfpipeline refine`
+
+```bash
+# 执行完整 refine 流程：序列提取 → tree → domain → motif
+gfpipeline --config config.yaml refine
+
+# 仅执行二次进化树分析
+gfpipeline --config config.yaml refine-tree
+
+# 仅执行二次结构域分析
+gfpipeline --config config.yaml refine-domain
+
+# 仅执行二次 motif 分析
+gfpipeline --config config.yaml refine-motif
+```
+
+**前置条件：**
+- identify、tree、domain、motif 阶段已完成（用于参考初步结果）
+- 配置文件中已设置 `refinement.idlist` 字段
+- idlist 文件已放置到指定路径
+
+**说明：**
+- 支持基因 ID（如 `Os01g0001`）和转录本 ID（如 `Os01t0001-01`）混合输入；基因 ID 会自动转换为对应的代表转录本 ID
+- 未在数据库中找到的 ID 会记录警告日志，不中断流程
+- 若只想重跑某个子阶段，可直接使用 `refine-tree`、`refine-domain`、`refine-motif`，但需确保 `{Proj}.refine.candidates.pep.fa` 已存在（即先运行过 `refine`）
+
+---
+
 ### collinearity — 共线性分析
 
 分析基因家族成员在基因组中的共线性分布和复制模式。
@@ -497,6 +563,20 @@ gfpipeline --config config.yaml trans
 | `{Proj}.motif.fimo/` | FIMO 扫描输出目录（含 fimo.tsv） |
 | `{Proj}.motif-filter.candidates.idlist` | Motif 筛选后的候选基因 ID 列表 |
 | `{Proj}.motif-filter.summary.tsv` | 每个基因的 motif 命中汇总表 |
+
+### refine 阶段
+
+| 文件 | 说明 |
+|------|------|
+| `{Proj}.refine.candidates.pep.fa` | 从 Rep_Pep_DB 提取的精炼蛋白序列 |
+| `{Proj}.refine.tree.pep.afa` | 精炼蛋白多序列比对结果 |
+| `{Proj}.refine.tree.pep.trimed.afa` | trimal 修剪后的比对 |
+| `{Proj}.refine.tree.pep.trimed.afa.treefile` | 二次 IQ-TREE 最优树（Newick 格式） |
+| `{Proj}.refine.domain.cdd.txt` | 精炼成员 NCBI CD-Search 结果 |
+| `{Proj}.refine.motif.meme/` | 二次 MEME 输出目录 |
+| `{Proj}.refine.motif.fimo/` | 二次 FIMO 扫描输出目录 |
+| `{Proj}.refine.motif-filter.candidates.idlist` | 二次 motif 筛选后的候选基因 ID 列表 |
+| `{Proj}.refine.motif-filter.summary.tsv` | 二次 motif 命中汇总表 |
 
 ### collinearity 阶段
 
@@ -674,3 +754,11 @@ gfpipeline --config config.yaml motif
 ```bash
 gfpipeline --config config.yaml --dry-run run
 ```
+
+**Q：如何进行交互式二次筛选？**
+
+初步分析完成后，根据进化树、结构域、motif 结果手动筛选基因，将基因 ID 写入 idlist 文件，在配置文件中添加 `refinement.idlist` 字段，然后运行：
+```bash
+gfpipeline --config config.yaml refine
+```
+支持基因 ID 和转录本 ID 混合输入。若只需重跑某个子分析，可单独调用 `refine-tree`、`refine-domain` 或 `refine-motif`。

@@ -87,17 +87,22 @@ class TransConfig(BaseModel):
     venn_groups:       list[str]       = []
 
 
+class RefinementConfig(BaseModel):
+    idlist: str  # Refinement_IDList 文件路径（必填，无默认值）
+
+
 class PipelineConfig(BaseModel):
     project_name: str
     data_dir:     str
     result_dir:   str
     databases:    DatabasesConfig
-    tools:        ToolsConfig        = ToolsConfig()
-    identify:     IdentifyConfig     = IdentifyConfig()
-    tree:         TreeConfig         = TreeConfig()
-    domain:       DomainConfig       = DomainConfig()
-    motif:        MotifConfig        = MotifConfig()
-    collinearity: CollinearityConfig = CollinearityConfig()
-    gff_qc:       GffQcConfig        = GffQcConfig()
-    genome_db:    GenomeDbConfig     = GenomeDbConfig()
-    trans:        TransConfig        = TransConfig()
+    tools:        ToolsConfig              = ToolsConfig()
+    identify:     IdentifyConfig           = IdentifyConfig()
+    tree:         TreeConfig               = TreeConfig()
+    domain:       DomainConfig             = DomainConfig()
+    motif:        MotifConfig              = MotifConfig()
+    collinearity: CollinearityConfig       = CollinearityConfig()
+    gff_qc:       GffQcConfig              = GffQcConfig()
+    genome_db:    GenomeDbConfig           = GenomeDbConfig()
+    trans:        TransConfig              = TransConfig()
+    refinement:   Optional[RefinementConfig] = None

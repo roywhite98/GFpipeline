@@ -214,21 +214,11 @@ class IdentifyStage:
         return merged
 
     def extract_sequences(self, ids: list[str], gene_ids: list[str]) -> None:
-        """Extract CDS, protein, and genome sequences for the candidate IDs."""
-        # CDS sequences (by transcript ID)
-        if not self.fm.skip_if_exists(self._candidates_cds_fa, force=False):
-            count = extract_fasta(self.fm.rep_cds, ids, self._candidates_cds_fa)
-            log.info("Extracted %d CDS sequences → %s", count, self._candidates_cds_fa)
-
-        # Protein sequences (by transcript ID)
+        """Extract protein sequences for the candidate IDs (tree/domain/motif stages need this)."""
+        # Protein sequences (by transcript ID) - required by tree/domain/motif stages
         if not self.fm.skip_if_exists(self._candidates_pep_fa, force=False):
             count = extract_fasta(self.fm.rep_pep, ids, self._candidates_pep_fa)
             log.info("Extracted %d protein sequences → %s", count, self._candidates_pep_fa)
-
-        # Genome sequences (by gene ID)
-        if not self.fm.skip_if_exists(self._candidates_genome_fa, force=False):
-            count = extract_fasta(Path(self._db.genome), gene_ids, self._candidates_genome_fa)
-            log.info("Extracted %d genome sequences → %s", count, self._candidates_genome_fa)
 
     def run(self, force: bool = False) -> None:
         """Execute the full identify stage."""

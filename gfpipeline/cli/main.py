@@ -64,6 +64,7 @@ def cli(ctx: click.Context, config: str, dry_run: bool, verbose: bool, force: bo
 from gfpipeline.cli import cmd_genome_db  # noqa: F401 — registers genome-db subcommand
 from gfpipeline.cli import cmd_run  # noqa: F401 — registers run subcommand
 from gfpipeline.cli import cmd_stages  # noqa: F401 — registers stage subcommands
+from gfpipeline.cli import cmd_refine  # noqa: F401 — registers refine subcommands
 
 
 def main() -> None:

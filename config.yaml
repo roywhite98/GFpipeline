@@ -84,3 +84,9 @@ trans:
   logfc_threshold:   null
   pvalue_threshold:  null
   venn_groups:       []
+
+# ── Interactive refinement (optional) ────────────────────────────────────────
+# After reviewing initial tree/domain/motif results, place a filtered gene ID
+# list in data/ and set the path here, then run: gfpipeline refine
+# refinement:
+#   idlist: data/my_refined_genes.idlist

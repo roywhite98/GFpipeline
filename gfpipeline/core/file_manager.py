@@ -70,3 +70,10 @@ class FileManager:
             log.info("Skipping %s (already exists)", path)
             return True
         return False
+
+
+class RefineFileManager(FileManager):
+    """FileManager variant that prefixes all stage names with 'refine.'."""
+
+    def result(self, stage: str, type_: str, ext: str) -> Path:
+        return super().result(f"refine.{stage}", type_, ext)
